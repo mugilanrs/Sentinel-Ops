@@ -325,14 +325,15 @@ footer p { max-width: 72ch; font-size: 13px; line-height: 1.65; margin: 0; }
 <header class="hero" id="top">
   <div class="inner">
     <div class="kicker-lockup"><span class="tick"></span>Solution architecture</div>
-    <h1>The governance layer above Dynatrace</h1>
-    <p class="lede">Sentinel Ops governs, predicts and optimizes an estate of AI agents. <b>Dynatrace / Grail is the observability source of truth;</b> the platform owns only what Dynatrace does not — business context, budgets, policy, forecasts, risk scoring, findings, cross-platform context and verified optimization.</p>
+    <h1>From AI Agent Observability to Operational Optimization</h1>
+    <p class="lede">Sentinel Ops connects technical signals, business outcomes and financial constraints to prioritize risks and verify optimization across AI agents.</p>
+    <p class="lede">Built on Dynatrace observability, with enterprise context from connected systems. <b>Dynatrace / Grail remains the observability source of truth.</b></p>
     <div class="livechip"><span class="d"></span> Live · Dynatrace Grail</div>
 
     <div class="herostats">
       <div class="hstat"><div class="v tnum">10</div><div class="k">AI agents in the insurance estate</div></div>
       <div class="hstat"><div class="v accent">Read-only</div><div class="k">data plane against Grail (DQL / HTTPS)</div></div>
-      <div class="hstat"><div class="v">Hybrid</div><div class="k">deterministic detectors + LLM reasoning in the decision path</div></div>
+      <div class="hstat"><div class="v">Deterministic decisions</div><div class="k">optional LLM assistance — never in the critical decision path</div></div>
       <div class="hstat"><div class="v tnum">1</div><div class="k">write — approval-gated ServiceNow incident</div></div>
     </div>
   </div>
@@ -407,7 +408,7 @@ footer p { max-width: 72ch; font-size: 13px; line-height: 1.65; margin: 0; }
           <div class="engine"><div class="en">Policy</div><div class="er">prioritize</div></div>
           <div class="engine"><div class="en">Exposure</div><div class="er">blast radius</div></div>
           <div class="engine"><div class="en">Freshness</div><div class="er">staleness gate</div></div>
-          <div class="engine llm"><div class="en">LLM reasoner</div><div class="er">decision path</div></div>
+          <div class="engine llm"><div class="en">LLM assist</div><div class="er">optional · advisory</div></div>
         </div>
       </div>
 
@@ -420,28 +421,28 @@ footer p { max-width: 72ch; font-size: 13px; line-height: 1.65; margin: 0; }
       <div class="adapters">
         <div class="node n-data"><div class="nt">DynatraceClient</div><div class="ntech">dynatrace/</div><div class="nd">Read-only DQL over HTTPS → <span class="m">MetricSnapshot</span> + series.</div><span class="ntag data">read-only</span></div>
         <div class="node n-write"><div class="nt">ServiceConnector</div><div class="ntech">integrations/</div><div class="nd">ServiceNow live or local fixture, one interface.</div><span class="ntag write">read · write</span></div>
-        <div class="node n-llm"><div class="nt">LLM provider</div><div class="ntech">llm/provider.py</div><div class="nd">Groq — reasons over telemetry and judges findings.</div><span class="ntag llm">decision path</span></div>
+        <div class="node n-llm"><div class="nt">LLM provider</div><div class="ntech">llm/provider.py</div><div class="nd">Groq — optional; drafts explanations and wording. Never decides.</div><span class="ntag llm">optional · advisory</span></div>
         <div class="node"><div class="nt">Config + State</div><div class="ntech">YAML · SQLite</div><div class="nd">Git-tracked config; findings, history, loop runs.</div><span class="ntag local">local only</span></div>
       </div>
     </div>
 
     <div class="flow strong">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M12 21l-4-4M12 21l4-4"/></svg>
-      <span class="fl">across the trust boundary — <span class="c-data">read-only data</span> · <span class="c-write">gated writes</span> · <span class="c-llm">LLM reasoning</span></span>
+      <span class="fl">across the trust boundary — <span class="c-data">read-only data</span> · <span class="c-write">gated writes</span> · <span class="c-llm">optional LLM assistance</span></span>
     </div>
 
     <div class="band-label">External systems</div>
     <div class="externals">
       <div class="node n-data"><div class="nt">Dynatrace / Grail</div><div class="nd">Logs, bizevents &amp; DQL. The observability source of truth — read only.</div><span class="ntag data">source of truth</span></div>
       <div class="node n-write"><div class="nt">ServiceNow</div><div class="nd">Services, CIs, changes &amp; incidents. One approval-gated write; fixture when unconfigured.</div><span class="ntag write">gated write</span></div>
-      <div class="node n-llm"><div class="nt">Groq API</div><div class="nd">The LLM reasoner — judges outcomes and produces findings within the decision path, each bound to cited evidence.</div><span class="ntag llm">decision path</span></div>
+      <div class="node n-llm"><div class="nt">Groq API</div><div class="nd">Optional LLM assistance — additive explanations and wording, outside the critical decision path.</div><span class="ntag llm">optional · advisory</span></div>
       <div class="node n-ingest"><div class="nt">Synthetic agent harness</div><div class="nd">Injects the insurance-estate telemetry into Grail so the platform has an estate to observe.</div><span class="ntag ingest">ingest</span></div>
     </div>
 
     <div class="legend">
       <span class="lg"><span class="sw data"></span> Read-only data (Grail)</span>
       <span class="lg"><span class="sw write"></span> Approval-gated write (ServiceNow)</span>
-      <span class="lg"><span class="sw llm"></span> LLM reasoning (Groq)</span>
+      <span class="lg"><span class="sw llm"></span> Optional LLM assistance (Groq)</span>
       <span class="lg"><span class="sw ingest"></span> Telemetry ingest</span>
     </div>
   </div>
@@ -449,13 +450,13 @@ footer p { max-width: 72ch; font-size: 13px; line-height: 1.65; margin: 0; }
 
 <section id="loop">
   <div class="shead"><div class="srule"></div><h2>The control loop</h2>
-  <p class="sub">A hybrid cycle: deterministic detectors and an LLM reasoner produce findings together. The order is the information — each stage consumes the one before it, and every judgment cites the telemetry behind it.</p></div>
+  <p class="sub">A deterministic cycle with optional LLM assistance for explanation. The order is the information — each stage consumes the one before it, and every judgment cites the telemetry behind it.</p></div>
   <div class="loop">
     <div class="step"><div class="no">01</div><div class="sn">Observe</div><div class="sd">Read runs, success, tokens, cost and latency from Grail.</div><span class="sm">DynatraceClient · DQL</span></div>
-    <div class="step"><div class="no">02</div><div class="sn">Evaluate</div><div class="sd">Detectors and the LLM reasoner turn signals + config into evidence-backed findings.</div><span class="sm">detectors/ ×9 · llm</span></div>
+    <div class="step"><div class="no">02</div><div class="sn">Evaluate</div><div class="sd">Deterministic detectors turn signals + config into evidence-backed findings.</div><span class="sm">detectors/ ×9</span></div>
     <div class="step"><div class="no">03</div><div class="sn">Predict</div><div class="sd">Project budget exhaustion with an explicit horizon and confidence.</div><span class="sm">forecast.py</span></div>
     <div class="step"><div class="no">04</div><div class="sn">Prioritize</div><div class="sd">Rank by criticality × severity × confidence × business exposure.</div><span class="sm">policy.py · exposure.py</span></div>
-    <div class="step"><div class="no">05</div><div class="sn">Recommend</div><div class="sd">The reasoner drafts actions and a response level — inform, notify, recommend.</div><span class="sm">llm · Finding + actions</span></div>
+    <div class="step"><div class="no">05</div><div class="sn">Recommend</div><div class="sd">Rules set actions and a response level — inform, notify, recommend; the optional LLM only assists with wording.</div><span class="sm">policy · Finding + actions</span></div>
     <div class="step"><div class="no">06</div><div class="sn">Verify</div><div class="sd">Measure a simulated change against a captured cost and quality baseline.</div><span class="sm">loop/intervention.py</span></div>
   </div>
 </section>
@@ -481,7 +482,7 @@ footer p { max-width: 72ch; font-size: 13px; line-height: 1.65; margin: 0; }
   <div class="guards">
     <div class="guard"><span class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/></svg></span><div><div class="gt">Read-only against Dynatrace</div><div class="gd">The runtime data plane only queries Grail. The platform never writes telemetry or mutates observability data.</div></div></div>
     <div class="guard"><span class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8M4 12h5m-5 5h8"/></svg></span><div><div class="gt">Evidence on every claim</div><div class="gd">Each finding carries the DQL text and the rows behind it. Nothing is asserted that cannot be re-run.</div></div></div>
-    <div class="guard"><span class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg></span><div><div class="gt">Hybrid reasoning, evidence-bound</div><div class="gd">Findings combine deterministic detectors with LLM reasoning in the decision path — and every judgment cites the telemetry behind it and records its confidence.</div></div></div>
+    <div class="guard"><span class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg></span><div><div class="gt">Deterministic decisions, optional LLM assistance</div><div class="gd">Findings come from deterministic detectors; the optional LLM is strictly additive and never in the critical decision path. Every judgment cites the telemetry behind it and records its confidence.</div></div></div>
     <div class="guard"><span class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z"/></svg></span><div><div class="gt">Stale data is never green</div><div class="gd">Telemetry older than the freshness window is reported as partially assessed with its age, never as healthy.</div></div></div>
     <div class="guard"><span class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v4m0 8v4m8-8h-4M8 12H4m13.7-5.7l-2.8 2.8M9.1 14.9l-2.8 2.8m11.4 0l-2.8-2.8M9.1 9.1L6.3 6.3"/></svg></span><div><div class="gt">Coverage gaps shown, not faked</div><div class="gd">A missing measure reads "not instrumented". Unmapped agents read "partially assessed" — never a plausible zero.</div></div></div>
     <div class="guard"><span class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 100-6 3 3 0 000 6zM5 12H3m18 0h-2M12 5V3m0 18v-2"/></svg></span><div><div class="gt">One write, fully gated</div><div class="gd">Creating a ServiceNow incident needs explicit approval, respects source-of-truth ownership and blocks likely duplicates.</div></div></div>
@@ -499,7 +500,7 @@ footer p { max-width: 72ch; font-size: 13px; line-height: 1.65; margin: 0; }
         <tr><td><b>Frontend</b></td><td class="m2">Next.js 14 · React 18 · TS</td><td>A real multi-area product UI with drill-down to evidence; hand-built components, no chart library.</td></tr>
         <tr><td><b>Data plane</b></td><td class="m2">Grail Query API (DQL / HTTPS)</td><td>A standalone read-only HTTPS call — not the dev-time MCP — with a read-only token.</td></tr>
         <tr><td><b>Business context</b></td><td class="m2">ServiceConnector abstraction</td><td>Live ServiceNow or a local fixture behind one interface; the fixture reports <span class="m">configured=false</span> so the UI never claims "live".</td></tr>
-        <tr><td><b>LLM</b></td><td class="m2">Groq</td><td>Reasons over telemetry to produce and judge findings in the decision path; every output is bound to cited evidence and a confidence level.</td></tr>
+        <tr><td><b>LLM</b></td><td class="m2">Groq</td><td>Optional and additive: assists with explanations and wording outside the critical decision path; never required for a decision.</td></tr>
         <tr><td><b>Config</b></td><td class="m2">YAML on disk</td><td>Business context, budgets, SLOs, mappings and risk weights are human-authored and git-tracked.</td></tr>
         <tr><td><b>State / history</b></td><td class="m2">SQLite</td><td>Findings, snapshots, cached health and verifications — queryable persistence, zero infra.</td></tr>
         <tr><td><b>Enforcement</b></td><td class="m2">Inform · Notify · Recommend</td><td>No hard enforcement. Interventions are human-approved, simulated and measured; nothing is auto-applied.</td></tr>
@@ -517,7 +518,7 @@ footer p { max-width: 72ch; font-size: 13px; line-height: 1.65; margin: 0; }
       <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="7" cy="17" r="2.3" fill="#fff"/><path d="M7 10.6A6.4 6.4 0 0 1 13.4 17" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M7 5.4A11.6 11.6 0 0 1 18.6 17" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span>
       <span class="fn">Sentinel Ops — AI Agent Operations &amp; Optimization Center</span>
     </div>
-    <p>A proof of concept over an insurance estate of ten agents, including IT-development agents that have runtime health but no business-outcome validator. Deterministic detectors and an LLM reasoner work together in the decision path, every judgment bound to cited evidence, with no hard enforcement.</p>
+    <p>A proof of concept over an insurance estate of ten agents, including IT-development agents that have runtime health but no business-outcome validator. Decisions are deterministic, with optional LLM assistance outside the critical path, every judgment bound to cited evidence, with no hard enforcement.</p>
   </div>
 </footer>
 
