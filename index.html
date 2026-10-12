@@ -1,0 +1,538 @@
+<title>Sentinel Ops Architecture</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: dark ink chrome (nav · hero · footer) bookends a light editorial body;
+   the system diagram is the centerpiece figure. One flat indigo accent; status colour only. */
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-2: #eceff4;
+  --surface-3: #e4e8ef;
+  --border: #e3e7ee;
+  --border-strong: #cdd3dd;
+  --fg: #0b0e15;
+  --fg-muted: #525b6d;
+  --fg-faint: #828b9c;
+  --accent: #4f46e5;
+  --accent-ink: #4035c4;
+  --accent-wash: #eef0fe;
+  --accent-line: #c6ccfb;
+  --ok: #0e8a4f;
+  --warn: #b45309;
+  --crit: #dc2626;
+  --shadow-sm: 0 1px 2px rgba(11,14,21,.05), 0 2px 6px -2px rgba(11,14,21,.06);
+  --shadow-lg: 0 2px 4px rgba(11,14,21,.04), 0 24px 48px -24px rgba(11,14,21,.22);
+
+  /* Ink — constant in both themes: the premium dark chrome */
+  --ink: #0a0d18;
+  --ink-2: #10152a;
+  --ink-fg: #f3f5fc;
+  --ink-muted: #aab2cb;
+  --ink-faint: #717aa0;
+  --ink-border: rgba(255,255,255,.11);
+  --ink-border-2: rgba(255,255,255,.07);
+  --ink-accent: #a6adff;
+  --ink-card: rgba(255,255,255,.035);
+
+  /* Diagram semantic palette — one hue per integration path */
+  --d-ui:#4f46e5;     --d-ui-bg:#eef0fe;
+  --d-data:#0e7fa0;   --d-data-bg:#e3f2f8;   --d-data-bd:#b3dbe8;
+  --d-write:#b45309;  --d-write-bg:#fbf0df;  --d-write-bd:#edd2a9;
+  --d-llm:#7c3aed;    --d-llm-bg:#f2ecfd;    --d-llm-bd:#dcc8f7;
+  --d-ingest:#0e8a4f; --d-ingest-bg:#e4f5ec; --d-ingest-bd:#abdbbf;
+
+  --display: "Bricolage Grotesque", "Hoefler Text", Georgia, serif;
+  --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  --maxw: 1080px;
+  --nav-h: 58px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #080a11; --surface: #10131c; --surface-2: #161a25; --surface-3: #1d212e;
+    --border: #232735; --border-strong: #353b4c;
+    --fg: #eef1f7; --fg-muted: #9aa3b4; --fg-faint: #6b7385;
+    --accent: #8b93f8; --accent-ink: #c3c9ff; --accent-wash: #181b30; --accent-line: #363b72;
+    --ok: #46c88a; --warn: #e0ad55; --crit: #f08479;
+    --d-ui:#8b93f8; --d-ui-bg:#181b30;
+    --d-data:#63c6e2; --d-data-bg:#0d2831; --d-data-bd:#1d4b59;
+    --d-write:#e0ad55; --d-write-bg:#271f10; --d-write-bd:#5a4620;
+    --d-llm:#b69bf5; --d-llm-bg:#1e1838; --d-llm-bd:#3c2f6b;
+    --d-ingest:#46c88a; --d-ingest-bg:#0f2a1c; --d-ingest-bd:#255c40;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+    --shadow-lg: 0 24px 60px -28px rgba(0,0,0,.8);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #080a11; --surface: #10131c; --surface-2: #161a25; --surface-3: #1d212e;
+  --border: #232735; --border-strong: #353b4c;
+  --fg: #eef1f7; --fg-muted: #9aa3b4; --fg-faint: #6b7385;
+  --accent: #8b93f8; --accent-ink: #c3c9ff; --accent-wash: #181b30; --accent-line: #363b72;
+  --ok: #46c88a; --warn: #e0ad55; --crit: #f08479;
+  --d-ui:#8b93f8; --d-ui-bg:#181b30;
+  --d-data:#63c6e2; --d-data-bg:#0d2831; --d-data-bd:#1d4b59;
+  --d-write:#e0ad55; --d-write-bg:#271f10; --d-write-bd:#5a4620;
+  --d-llm:#b69bf5; --d-llm-bg:#1e1838; --d-llm-bd:#3c2f6b;
+  --d-ingest:#46c88a; --d-ingest-bg:#0f2a1c; --d-ingest-bd:#255c40;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-lg: 0 24px 60px -28px rgba(0,0,0,.8);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font-family: var(--sans); font-size: 15px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+.inner { max-width: var(--maxw); margin: 0 auto; padding-inline: clamp(20px, 5vw, 48px); }
+.tnum { font-variant-numeric: tabular-nums; }
+section[id] { scroll-margin-top: calc(var(--nav-h) + 12px); }
+
+/* ============ Sticky nav (ink chrome) ============ */
+.nav {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50;
+  background: color-mix(in srgb, var(--ink) 82%, transparent);
+  backdrop-filter: saturate(1.3) blur(12px);
+  border-bottom: 1px solid var(--ink-border-2);
+  color: var(--ink-fg);
+}
+.nav .inner { height: var(--nav-h); display: flex; align-items: center; gap: 20px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; }
+.brand .logo { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); display: grid; place-items: center; flex: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.22); }
+.brand .logo svg { width: 16px; height: 16px; }
+.brand .bn { font-weight: 600; font-size: 14.5px; letter-spacing: -0.01em; }
+.nav .spacer { flex: 1; }
+.navlinks { display: flex; gap: 4px; }
+.navlinks a { color: var(--ink-muted); font-size: 13px; padding: 7px 11px; border-radius: 7px; transition: color .15s, background .15s; }
+.navlinks a:hover { color: var(--ink-fg); background: rgba(255,255,255,.06); }
+.themebtn { flex: none; width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--ink-border); background: transparent; color: var(--ink-muted); display: grid; place-items: center; cursor: pointer; transition: color .15s, border-color .15s; }
+.themebtn:hover { color: var(--ink-fg); border-color: var(--ink-border); background: rgba(255,255,255,.05); }
+.themebtn svg { width: 16px; height: 16px; }
+.themebtn .moon { display: none; }
+:root[data-theme="dark"] .themebtn .sun, html:not([data-theme]) .themebtn .sun { display: block; }
+@media (prefers-color-scheme: dark) { html:not([data-theme]) .themebtn .sun { display: none; } html:not([data-theme]) .themebtn .moon { display: block; } }
+:root[data-theme="dark"] .themebtn .sun { display: none; }
+:root[data-theme="dark"] .themebtn .moon { display: block; }
+:root[data-theme="light"] .themebtn .sun { display: block; }
+:root[data-theme="light"] .themebtn .moon { display: none; }
+@media (max-width: 720px) { .navlinks { display: none; } }
+a { color: var(--accent-ink); text-underline-offset: 2px; }
+
+/* ============ Hero (ink) ============ */
+.hero {
+  background:
+    radial-gradient(120% 140% at 78% -10%, #1a2044 0%, transparent 46%),
+    radial-gradient(90% 120% at 8% 0%, #141834 0%, transparent 44%),
+    linear-gradient(180deg, #0c1022 0%, var(--ink) 70%);
+  color: var(--ink-fg); position: relative; overflow: hidden;
+  border-bottom: 1px solid var(--ink-border);
+}
+.hero .inner { padding-block: clamp(56px, 9vw, 104px) clamp(44px, 7vw, 80px); position: relative; z-index: 1; }
+.kicker-lockup { display: inline-flex; align-items: center; gap: 9px; font-family: var(--mono); font-size: 11px; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 26px; }
+.kicker-lockup .tick { width: 22px; height: 1px; background: var(--ink-accent); opacity: .7; }
+h1 { font-family: var(--display); font-weight: 600; font-size: clamp(2.3rem, 6.2vw, 4rem); line-height: 1.0; letter-spacing: -0.025em; margin: 0 0 22px; text-wrap: balance; max-width: 15ch; }
+.hero .lede { font-size: clamp(1.02rem, 2.2vw, 1.26rem); color: var(--ink-muted); max-width: 58ch; margin: 0; line-height: 1.55; }
+.hero .lede b { color: var(--ink-fg); font-weight: 600; }
+.livechip { display: inline-flex; align-items: center; gap: 8px; margin-top: 30px; font-size: 12.5px; color: var(--ink-muted); border: 1px solid var(--ink-border); background: var(--ink-card); padding: 6px 13px; border-radius: 999px; font-family: var(--mono); letter-spacing: .01em; }
+.livechip .d { width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 9px #34d399; flex: none; }
+
+.herostats { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: clamp(40px, 6vw, 60px); border-top: 1px solid var(--ink-border); }
+.hstat { padding: 24px 24px 2px 0; border-left: 1px solid var(--ink-border-2); padding-left: 24px; }
+.hstat:first-child { border-left: none; padding-left: 0; }
+.hstat .v { font-family: var(--display); font-weight: 600; font-size: clamp(1.5rem, 3.4vw, 2rem); letter-spacing: -0.02em; line-height: 1; color: var(--ink-fg); }
+.hstat .v.accent { color: var(--ink-accent); }
+.hstat .k { font-size: 12px; color: var(--ink-faint); margin-top: 9px; line-height: 1.4; }
+@media (max-width: 680px) { .herostats { grid-template-columns: repeat(2, 1fr); gap: 0; }
+  .hstat:nth-child(3), .hstat:nth-child(4) { border-top: 1px solid var(--ink-border-2); }
+  .hstat:nth-child(odd) { border-left: none; padding-left: 0; } }
+
+/* ============ Body sections ============ */
+main { background: var(--bg); }
+section { padding-block: clamp(52px, 8vw, 84px); }
+section + section { border-top: 1px solid var(--border); }
+.shead { margin-bottom: clamp(26px, 4vw, 38px); }
+.shead .srule { width: 34px; height: 2px; background: var(--accent); border-radius: 2px; margin-bottom: 18px; }
+h2 { font-family: var(--display); font-weight: 600; font-size: clamp(1.55rem, 3.6vw, 2.15rem); letter-spacing: -0.02em; margin: 0 0 12px; line-height: 1.08; text-wrap: balance; }
+.sub { color: var(--fg-muted); max-width: 66ch; margin: 0; font-size: clamp(.98rem, 1.6vw, 1.08rem); line-height: 1.6; }
+h3 { font-size: 1.02rem; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 6px; }
+p { margin: 0 0 14px; }
+code, .m { font-family: var(--mono); font-size: .85em; }
+.m { color: var(--accent-ink); background: var(--accent-wash); padding: 1px 6px; border-radius: 5px; }
+
+/* two-column truth */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 680px) { .cols { grid-template-columns: 1fr; } }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 15px; padding: 24px 26px; }
+.panel.owns { border-color: var(--accent-line); background: linear-gradient(180deg, var(--accent-wash), var(--surface) 120%); }
+.panel h3 { margin-bottom: 14px; font-size: 1.05rem; }
+.panel ul { margin: 0; padding-left: 0; list-style: none; }
+.panel li { position: relative; padding-left: 22px; margin: 11px 0; font-size: 14.5px; line-height: 1.5; }
+.panel li::before { content: ""; position: absolute; left: 2px; top: 8px; width: 7px; height: 7px; border-radius: 2px; background: var(--accent); }
+.panel.no li::before { background: transparent; border: 1.5px solid var(--border-strong); border-radius: 50%; width: 8px; height: 8px; top: 7px; }
+
+/* ============ System diagram (figure) ============ */
+.figure { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: clamp(18px, 3vw, 30px); box-shadow: var(--shadow-lg); }
+.figcap { display: flex; align-items: baseline; gap: 10px; margin-bottom: 20px; }
+.figcap .fnum { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-ink); }
+.figcap .ft { font-size: 13px; color: var(--fg-muted); }
+.boundary { border: 1.5px dashed var(--accent-line); border-radius: 16px; padding: 20px 18px 22px; position: relative; background: color-mix(in srgb, var(--accent-wash) 40%, transparent); }
+.boundary > .btag { position: absolute; top: -9px; left: 18px; background: var(--surface); padding: 0 9px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .05em; color: var(--accent-ink); text-transform: uppercase; }
+.band-label { font-family: var(--mono); font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: var(--fg-faint); margin: 2px 0 10px; }
+.node { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; padding: 14px 16px; transition: border-color .16s, transform .16s, box-shadow .16s; }
+.node:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.node .nt { font-weight: 600; font-size: 14px; letter-spacing: -0.01em; }
+.node .ntech { font-family: var(--mono); font-size: 10.5px; color: var(--accent-ink); margin-top: 3px; }
+.node .nd { font-size: 12px; color: var(--fg-muted); margin-top: 7px; line-height: 1.45; }
+.node.core { background: var(--surface-2); border-color: var(--border-strong); }
+.node.core:hover { transform: none; }
+.node.loop { background: linear-gradient(180deg, var(--accent-wash), var(--surface)); border-color: var(--accent-line); }
+.node.ext { background: var(--surface-2); }
+
+/* colour-coded by integration path */
+.node.n-ui { background: var(--d-ui-bg); border-color: var(--d-ui); }
+.node.n-ui .nt { color: var(--d-ui); }
+.node.n-data { background: var(--d-data-bg); border-color: var(--d-data-bd); }
+.node.n-data .nt { color: var(--d-data); }
+.node.n-write { background: var(--d-write-bg); border-color: var(--d-write-bd); }
+.node.n-write .nt { color: var(--d-write); }
+.node.n-llm { background: var(--d-llm-bg); border-color: var(--d-llm-bd); }
+.node.n-llm .nt { color: var(--d-llm); }
+.node.n-ingest { background: var(--d-ingest-bg); border-color: var(--d-ingest-bd); }
+.node.n-ingest .nt { color: var(--d-ingest); }
+.node.n-data .ntech, .node.n-write .ntech, .node.n-llm .ntech, .node.n-ingest .ntech { color: var(--fg-muted); }
+.node[class*="n-"]:hover { transform: translateY(-1px); }
+.ntag { display: inline-block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; margin-top: 10px; border: 1px solid currentColor; line-height: 1.5; }
+.ntag.data { color: var(--d-data); } .ntag.write { color: var(--d-write); } .ntag.llm { color: var(--d-llm); } .ntag.ingest { color: var(--d-ingest); } .ntag.local { color: var(--fg-faint); }
+.engine.llm { background: var(--d-llm-bg); border-color: var(--d-llm-bd); }
+.engine.llm .en { color: var(--d-llm); }
+.c-data { color: var(--d-data); font-weight: 600; } .c-write { color: var(--d-write); font-weight: 600; } .c-llm { color: var(--d-llm); font-weight: 600; }
+
+.enginegrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 14px; }
+.engine { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 11px 8px; text-align: center; transition: border-color .15s; }
+.engine:hover { border-color: var(--accent-line); }
+.engine .en { font-weight: 600; font-size: 12px; letter-spacing: -0.01em; }
+.engine .er { font-size: 9.5px; color: var(--fg-muted); margin-top: 3px; font-family: var(--mono); letter-spacing: .01em; }
+@media (max-width: 820px) { .enginegrid { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 460px) { .enginegrid { grid-template-columns: repeat(2, 1fr); } }
+
+.adapters, .externals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.externals { margin-top: 10px; }
+@media (max-width: 820px) { .adapters, .externals { grid-template-columns: repeat(2, 1fr); } }
+
+.flow { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 13px 0; color: var(--fg-faint); }
+.flow svg { width: 15px; height: 15px; flex: none; }
+.flow .fl { font-family: var(--mono); font-size: 10.5px; letter-spacing: .02em; color: var(--fg-muted); }
+.flow.strong { color: var(--accent); }
+.flow.strong .fl { color: var(--accent-ink); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 20px; font-size: 12px; color: var(--fg-muted); }
+.legend .lg { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 15px; height: 12px; border-radius: 3px; border: 1px solid var(--border-strong); flex: none; }
+.sw.data { background: var(--d-data-bg); border-color: var(--d-data); }
+.sw.write { background: var(--d-write-bg); border-color: var(--d-write); }
+.sw.llm { background: var(--d-llm-bg); border-color: var(--d-llm); }
+.sw.ingest { background: var(--d-ingest-bg); border-color: var(--d-ingest); }
+
+/* ============ Loop stepper ============ */
+.loop { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+@media (max-width: 880px) { .loop { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 500px) { .loop { grid-template-columns: repeat(2, 1fr); } }
+.step { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 16px; position: relative; transition: border-color .16s, transform .16s; }
+.step:hover { border-color: var(--accent-line); transform: translateY(-2px); }
+.step .no { font-family: var(--mono); font-size: 11px; color: var(--accent-ink); font-weight: 600; letter-spacing: .04em; }
+.step .sn { font-weight: 600; font-size: 15px; margin: 9px 0 5px; letter-spacing: -0.01em; }
+.step .sd { font-size: 12.5px; color: var(--fg-muted); line-height: 1.45; }
+.step .sm { font-family: var(--mono); font-size: 10px; color: var(--fg-faint); margin-top: 10px; display: block; letter-spacing: .01em; }
+
+/* ============ Dimensions ============ */
+.dims { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 760px) { .dims { grid-template-columns: repeat(2, 1fr); } }
+.dim { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 15px 16px; display: flex; gap: 11px; align-items: flex-start; }
+.dim.off { background: transparent; border-style: dashed; }
+.dim .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex: none; }
+.dim .dot.on { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent); }
+.dim .dot.no { background: var(--fg-faint); opacity: .45; }
+.dim .dn { font-weight: 600; font-size: 13px; letter-spacing: -0.01em; }
+.dim .dr { font-size: 11px; color: var(--fg-muted); margin-top: 2px; }
+
+/* ============ Guarantees ============ */
+.guards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 32px; }
+@media (max-width: 680px) { .guards { grid-template-columns: 1fr; } }
+.guard { display: flex; gap: 14px; align-items: flex-start; }
+.guard .gi { flex: none; width: 34px; height: 34px; border-radius: 9px; background: var(--accent-wash); color: var(--accent-ink); display: grid; place-items: center; margin-top: 1px; border: 1px solid var(--accent-line); }
+.guard .gi svg { width: 17px; height: 17px; }
+.guard .gt { font-weight: 600; font-size: 14.5px; letter-spacing: -0.01em; }
+.guard .gd { font-size: 13px; color: var(--fg-muted); line-height: 1.5; margin-top: 3px; }
+
+/* ============ Table ============ */
+.tblwrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 15px; }
+table { border-collapse: collapse; width: 100%; min-width: 580px; font-size: 13.5px; }
+th, td { text-align: left; padding: 14px 18px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-faint); font-weight: 600; background: var(--surface-2); }
+tbody tr { transition: background .12s; }
+tbody tr:hover { background: var(--surface-2); }
+tr:last-child td { border-bottom: none; }
+td b { font-weight: 600; }
+td .m2 { font-family: var(--mono); font-size: 12px; color: var(--accent-ink); }
+
+/* ============ Footer (ink) ============ */
+footer { background: var(--ink); color: var(--ink-muted); border-top: 1px solid var(--ink-border); }
+footer .inner { padding-block: 48px 64px; }
+footer .flock { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+footer .flock .logo { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); display: grid; place-items: center; flex: none; }
+footer .flock .logo svg { width: 16px; height: 16px; }
+footer .flock .fn { color: var(--ink-fg); font-weight: 600; font-size: 14.5px; }
+footer p { max-width: 72ch; font-size: 13px; line-height: 1.65; margin: 0; }
+
+/* ============ Entrance ============ */
+@media (prefers-reduced-motion: no-preference) {
+  .hero .kicker-lockup, .hero h1, .hero .lede, .hero .livechip, .hero .herostats {
+    animation: rise .6s cubic-bezier(.16,1,.3,1) both;
+  }
+  .hero h1 { animation-delay: .04s; }
+  .hero .lede { animation-delay: .09s; }
+  .hero .livechip { animation-delay: .14s; }
+  .hero .herostats { animation-delay: .18s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+</style>
+
+<nav class="nav">
+  <div class="inner">
+    <a class="brand" href="#top">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="7" cy="17" r="2.3" fill="#fff"/><path d="M7 10.6A6.4 6.4 0 0 1 13.4 17" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M7 5.4A11.6 11.6 0 0 1 18.6 17" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span>
+      <span class="bn">Sentinel Ops</span>
+    </a>
+    <span class="spacer"></span>
+    <div class="navlinks">
+      <a href="#architecture">Architecture</a>
+      <a href="#loop">Control loop</a>
+      <a href="#guarantees">Guarantees</a>
+      <a href="#stack">Stack</a>
+    </div>
+    <button class="themebtn" id="themeToggle" type="button" aria-label="Toggle colour theme">
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 019.5 4 7 7 0 1020 14.5z"/></svg>
+    </button>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="inner">
+    <div class="kicker-lockup"><span class="tick"></span>Solution architecture</div>
+    <h1>The governance layer above Dynatrace</h1>
+    <p class="lede">Sentinel Ops governs, predicts and optimizes an estate of AI agents. <b>Dynatrace / Grail is the observability source of truth;</b> the platform owns only what Dynatrace does not — business context, budgets, policy, forecasts, risk scoring, findings, cross-platform context and verified optimization.</p>
+    <div class="livechip"><span class="d"></span> Live · Dynatrace Grail</div>
+
+    <div class="herostats">
+      <div class="hstat"><div class="v tnum">10</div><div class="k">AI agents in the insurance estate</div></div>
+      <div class="hstat"><div class="v accent">Read-only</div><div class="k">data plane against Grail (DQL / HTTPS)</div></div>
+      <div class="hstat"><div class="v">Hybrid</div><div class="k">deterministic detectors + LLM reasoning in the decision path</div></div>
+      <div class="hstat"><div class="v tnum">1</div><div class="k">write — approval-gated ServiceNow incident</div></div>
+    </div>
+  </div>
+</header>
+
+<main>
+<div class="inner">
+
+<section>
+  <div class="shead"><div class="srule"></div><h2>The dividing line</h2>
+  <p class="sub">Capture, correlation, DQL querying and multi-step investigation are native to Dynatrace. Sentinel Ops calls them read-only and builds only the management layer on top — so the two never overlap.</p></div>
+  <div class="cols">
+    <div class="panel owns">
+      <h3>What Sentinel Ops owns</h3>
+      <ul>
+        <li>Business context per agent — purpose, owner, criticality, expected outcomes</li>
+        <li>Budgets, cost baselines, SLOs and policy thresholds</li>
+        <li>Budget-exhaustion forecasts and release-risk scoring</li>
+        <li>Evidence-backed findings ranked by business impact</li>
+        <li>Cross-platform context from ServiceNow — services, changes, incidents</li>
+        <li>Verified optimization — apply a change, measure cost and quality against a baseline</li>
+      </ul>
+    </div>
+    <div class="panel no">
+      <h3>What it never rebuilds</h3>
+      <ul>
+        <li>Telemetry capture and ingestion</li>
+        <li>Span correlation and distributed tracing</li>
+        <li>The DQL engine and Grail storage</li>
+        <li>Davis-style anomaly detection</li>
+        <li>A tracing or query interface</li>
+        <li>Any hard enforcement or auto-remediation</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="architecture">
+  <div class="shead"><div class="srule"></div><h2>System architecture</h2>
+  <p class="sub">A modular-monolith backend (Python / FastAPI) and a hand-built Next.js console. A single adapter boundary is the only code that talks to the outside world — Grail, ServiceNow and the optional LLM each sit behind one seam.</p></div>
+
+  <div class="figure">
+    <div class="figcap"><span class="fnum">Fig. 1</span><span class="ft">Runtime topology — presentation, application core, adapters, and the systems beyond the trust boundary.</span></div>
+
+    <div class="boundary">
+      <span class="btag">Sentinel Ops — what we build</span>
+
+      <div class="band-label">Presentation</div>
+      <div class="node n-ui">
+        <div class="nt">Web UI</div>
+        <div class="ntech">Next.js 14 · React 18 · TypeScript</div>
+        <div class="nd">Operate (Estate Overview, Agent Registry) + Intelligence (Resource Guard, Business Outcomes, Release Risk, Optimization) + per-agent detail with expandable DQL evidence.</div>
+      </div>
+
+      <div class="flow strong">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v16M8 20l-3-3M8 20l3-3M16 20V4M16 4l-3 3M16 4l3 3"/></svg>
+        <span class="fl">HTTP · JSON — typed client (lib/api.ts)</span>
+      </div>
+
+      <div class="band-label">Application core</div>
+      <div class="node core">
+        <div class="nt">Backend API — FastAPI + Pydantic</div>
+        <div class="ntech">/agents · /findings · /release-risks · /loop · /interventions · /integrations</div>
+        <div class="node loop" style="margin-top:14px">
+          <div class="nt">Monitoring loop — orchestrator</div>
+          <div class="nd">Runs every agent through every detector in parallel; rolls up 8 dimensions; records an observable <span class="m">LoopRun</span>; caches health and the release-risk report. Freshness enforced throughout.</div>
+        </div>
+        <div class="enginegrid">
+          <div class="engine"><div class="en">Detectors</div><div class="er">9 · pure fns</div></div>
+          <div class="engine"><div class="en">Forecast</div><div class="er">budget horizon</div></div>
+          <div class="engine"><div class="en">Risk</div><div class="er">release score</div></div>
+          <div class="engine"><div class="en">Policy</div><div class="er">prioritize</div></div>
+          <div class="engine"><div class="en">Exposure</div><div class="er">blast radius</div></div>
+          <div class="engine"><div class="en">Freshness</div><div class="er">staleness gate</div></div>
+          <div class="engine llm"><div class="en">LLM reasoner</div><div class="er">decision path</div></div>
+        </div>
+      </div>
+
+      <div class="flow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M12 20l-4-4M12 20l4-4"/></svg>
+        <span class="fl">adapters — the only code that talks outward</span>
+      </div>
+
+      <div class="band-label">Adapters</div>
+      <div class="adapters">
+        <div class="node n-data"><div class="nt">DynatraceClient</div><div class="ntech">dynatrace/</div><div class="nd">Read-only DQL over HTTPS → <span class="m">MetricSnapshot</span> + series.</div><span class="ntag data">read-only</span></div>
+        <div class="node n-write"><div class="nt">ServiceConnector</div><div class="ntech">integrations/</div><div class="nd">ServiceNow live or local fixture, one interface.</div><span class="ntag write">read · write</span></div>
+        <div class="node n-llm"><div class="nt">LLM provider</div><div class="ntech">llm/provider.py</div><div class="nd">Groq — reasons over telemetry and judges findings.</div><span class="ntag llm">decision path</span></div>
+        <div class="node"><div class="nt">Config + State</div><div class="ntech">YAML · SQLite</div><div class="nd">Git-tracked config; findings, history, loop runs.</div><span class="ntag local">local only</span></div>
+      </div>
+    </div>
+
+    <div class="flow strong">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M12 21l-4-4M12 21l4-4"/></svg>
+      <span class="fl">across the trust boundary — <span class="c-data">read-only data</span> · <span class="c-write">gated writes</span> · <span class="c-llm">LLM reasoning</span></span>
+    </div>
+
+    <div class="band-label">External systems</div>
+    <div class="externals">
+      <div class="node n-data"><div class="nt">Dynatrace / Grail</div><div class="nd">Logs, bizevents &amp; DQL. The observability source of truth — read only.</div><span class="ntag data">source of truth</span></div>
+      <div class="node n-write"><div class="nt">ServiceNow</div><div class="nd">Services, CIs, changes &amp; incidents. One approval-gated write; fixture when unconfigured.</div><span class="ntag write">gated write</span></div>
+      <div class="node n-llm"><div class="nt">Groq API</div><div class="nd">The LLM reasoner — judges outcomes and produces findings within the decision path, each bound to cited evidence.</div><span class="ntag llm">decision path</span></div>
+      <div class="node n-ingest"><div class="nt">Synthetic agent harness</div><div class="nd">Injects the insurance-estate telemetry into Grail so the platform has an estate to observe.</div><span class="ntag ingest">ingest</span></div>
+    </div>
+
+    <div class="legend">
+      <span class="lg"><span class="sw data"></span> Read-only data (Grail)</span>
+      <span class="lg"><span class="sw write"></span> Approval-gated write (ServiceNow)</span>
+      <span class="lg"><span class="sw llm"></span> LLM reasoning (Groq)</span>
+      <span class="lg"><span class="sw ingest"></span> Telemetry ingest</span>
+    </div>
+  </div>
+</section>
+
+<section id="loop">
+  <div class="shead"><div class="srule"></div><h2>The control loop</h2>
+  <p class="sub">A hybrid cycle: deterministic detectors and an LLM reasoner produce findings together. The order is the information — each stage consumes the one before it, and every judgment cites the telemetry behind it.</p></div>
+  <div class="loop">
+    <div class="step"><div class="no">01</div><div class="sn">Observe</div><div class="sd">Read runs, success, tokens, cost and latency from Grail.</div><span class="sm">DynatraceClient · DQL</span></div>
+    <div class="step"><div class="no">02</div><div class="sn">Evaluate</div><div class="sd">Detectors and the LLM reasoner turn signals + config into evidence-backed findings.</div><span class="sm">detectors/ ×9 · llm</span></div>
+    <div class="step"><div class="no">03</div><div class="sn">Predict</div><div class="sd">Project budget exhaustion with an explicit horizon and confidence.</div><span class="sm">forecast.py</span></div>
+    <div class="step"><div class="no">04</div><div class="sn">Prioritize</div><div class="sd">Rank by criticality × severity × confidence × business exposure.</div><span class="sm">policy.py · exposure.py</span></div>
+    <div class="step"><div class="no">05</div><div class="sn">Recommend</div><div class="sd">The reasoner drafts actions and a response level — inform, notify, recommend.</div><span class="sm">llm · Finding + actions</span></div>
+    <div class="step"><div class="no">06</div><div class="sn">Verify</div><div class="sd">Measure a simulated change against a captured cost and quality baseline.</div><span class="sm">loop/intervention.py</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><div class="srule"></div><h2>The eight-dimension model</h2>
+  <p class="sub">An agent can be runtime-healthy yet financially inefficient, or expensive yet business-critical — so the dimensions stay separate. Five are assessed from live telemetry; three are reported honestly as out of scope for the PoC rather than faked green.</p></div>
+  <div class="dims">
+    <div class="dim"><span class="dot on"></span><div><div class="dn">Runtime health</div><div class="dr">self-reported success &amp; errors</div></div></div>
+    <div class="dim"><span class="dot on"></span><div><div class="dn">Task effectiveness</div><div class="dr">independently validated outcomes</div></div></div>
+    <div class="dim"><span class="dot on"></span><div><div class="dn">Resource health</div><div class="dr">token &amp; budget consumption</div></div></div>
+    <div class="dim"><span class="dot on"></span><div><div class="dn">Financial efficiency</div><div class="dr">cost per verified success</div></div></div>
+    <div class="dim"><span class="dot on"></span><div><div class="dn">SLA compliance</div><div class="dr">breach risk on validated outcomes</div></div></div>
+    <div class="dim off"><span class="dot no"></span><div><div class="dn">Business relevance</div><div class="dr">not assessed in PoC</div></div></div>
+    <div class="dim off"><span class="dot no"></span><div><div class="dn">Governance &amp; risk</div><div class="dr">not assessed in PoC</div></div></div>
+    <div class="dim off"><span class="dot no"></span><div><div class="dn">Optimization status</div><div class="dr">not assessed in PoC</div></div></div>
+  </div>
+</section>
+
+<section id="guarantees">
+  <div class="shead"><div class="srule"></div><h2>Design guarantees</h2>
+  <p class="sub">The properties that make the output trustworthy — enforced in code, not left to convention.</p></div>
+  <div class="guards">
+    <div class="guard"><span class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/></svg></span><div><div class="gt">Read-only against Dynatrace</div><div class="gd">The runtime data plane only queries Grail. The platform never writes telemetry or mutates observability data.</div></div></div>
+    <div class="guard"><span class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8M4 12h5m-5 5h8"/></svg></span><div><div class="gt">Evidence on every claim</div><div class="gd">Each finding carries the DQL text and the rows behind it. Nothing is asserted that cannot be re-run.</div></div></div>
+    <div class="guard"><span class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg></span><div><div class="gt">Hybrid reasoning, evidence-bound</div><div class="gd">Findings combine deterministic detectors with LLM reasoning in the decision path — and every judgment cites the telemetry behind it and records its confidence.</div></div></div>
+    <div class="guard"><span class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z"/></svg></span><div><div class="gt">Stale data is never green</div><div class="gd">Telemetry older than the freshness window is reported as partially assessed with its age, never as healthy.</div></div></div>
+    <div class="guard"><span class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v4m0 8v4m8-8h-4M8 12H4m13.7-5.7l-2.8 2.8M9.1 14.9l-2.8 2.8m11.4 0l-2.8-2.8M9.1 9.1L6.3 6.3"/></svg></span><div><div class="gt">Coverage gaps shown, not faked</div><div class="gd">A missing measure reads "not instrumented". Unmapped agents read "partially assessed" — never a plausible zero.</div></div></div>
+    <div class="guard"><span class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 100-6 3 3 0 000 6zM5 12H3m18 0h-2M12 5V3m0 18v-2"/></svg></span><div><div class="gt">One write, fully gated</div><div class="gd">Creating a ServiceNow incident needs explicit approval, respects source-of-truth ownership and blocks likely duplicates.</div></div></div>
+  </div>
+</section>
+
+<section id="stack">
+  <div class="shead"><div class="srule"></div><h2>Technology choices</h2>
+  <p class="sub">Each decision favours reviewable, zero-infrastructure building blocks that keep the honesty backbone intact.</p></div>
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>Layer</th><th>Choice</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><b>Backend</b></td><td class="m2">Python 3.11 · FastAPI · Pydantic</td><td>Typed models match the finding and evidence schemas; auto OpenAPI gives the UI its contract.</td></tr>
+        <tr><td><b>Frontend</b></td><td class="m2">Next.js 14 · React 18 · TS</td><td>A real multi-area product UI with drill-down to evidence; hand-built components, no chart library.</td></tr>
+        <tr><td><b>Data plane</b></td><td class="m2">Grail Query API (DQL / HTTPS)</td><td>A standalone read-only HTTPS call — not the dev-time MCP — with a read-only token.</td></tr>
+        <tr><td><b>Business context</b></td><td class="m2">ServiceConnector abstraction</td><td>Live ServiceNow or a local fixture behind one interface; the fixture reports <span class="m">configured=false</span> so the UI never claims "live".</td></tr>
+        <tr><td><b>LLM</b></td><td class="m2">Groq</td><td>Reasons over telemetry to produce and judge findings in the decision path; every output is bound to cited evidence and a confidence level.</td></tr>
+        <tr><td><b>Config</b></td><td class="m2">YAML on disk</td><td>Business context, budgets, SLOs, mappings and risk weights are human-authored and git-tracked.</td></tr>
+        <tr><td><b>State / history</b></td><td class="m2">SQLite</td><td>Findings, snapshots, cached health and verifications — queryable persistence, zero infra.</td></tr>
+        <tr><td><b>Enforcement</b></td><td class="m2">Inform · Notify · Recommend</td><td>No hard enforcement. Interventions are human-approved, simulated and measured; nothing is auto-applied.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="inner">
+    <div class="flock">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="7" cy="17" r="2.3" fill="#fff"/><path d="M7 10.6A6.4 6.4 0 0 1 13.4 17" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M7 5.4A11.6 11.6 0 0 1 18.6 17" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span>
+      <span class="fn">Sentinel Ops — AI Agent Operations &amp; Optimization Center</span>
+    </div>
+    <p>A proof of concept over an insurance estate of ten agents, including IT-development agents that have runtime health but no business-outcome validator. Deterministic detectors and an LLM reasoner work together in the decision path, every judgment bound to cited evidence, with no hard enforcement.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement, KEY = "sentinel-theme";
+  try { var s = localStorage.getItem(KEY); if (s === "dark" || s === "light") root.setAttribute("data-theme", s); } catch (e) {}
+  var btn = document.getElementById("themeToggle");
+  if (btn) btn.addEventListener("click", function () {
+    var cur = root.getAttribute("data-theme");
+    var isDark = cur ? cur === "dark"
+      : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var next = isDark ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem(KEY, next); } catch (e) {}
+  });
+})();
+</script>
